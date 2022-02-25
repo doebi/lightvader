@@ -5,6 +5,8 @@
 const char *SSID = "/dev/lol";
 const char *PWD = "4dprinter";
 
+bool canSend = false;
+
 #define PIN_ADC 34
 #define PIN_MOTOR_A 22
 #define PIN_MOTOR_B 23
@@ -12,12 +14,15 @@ const char *PWD = "4dprinter";
 float MAX_ADC = 4095;
 float val = 0;
 float last = 0;
+float wanted = 0;
 float threshold = 0.02;
 
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 char *mqttServer = "mqtt.devlol.org";
 int mqttPort = 1883;
+
+String clientId = String(random(0xffff), HEX);
 
 float readState() {
   return analogRead(PIN_ADC) / MAX_ADC;
@@ -36,6 +41,7 @@ void connectToWiFi() {
 }
 
 void setState(float newVal) {
+  wanted = newVal;
   val = readState();
 
   if (val == newVal) return;
@@ -62,7 +68,13 @@ void setState(float newVal) {
 
 void callback(char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0';
-  setState(String((char*)payload).toFloat());
+
+  //topic = "doebi/zigvader/d587/in"
+  String id = String(topic).substring(15, 19);
+  if (id != clientId) {
+    canSend = false;
+    setState(String((char*)payload).toFloat());
+  }
 }
 
 void setup() {
@@ -95,13 +107,11 @@ void reconnect() {
   Serial.println("Connecting to MQTT Broker...");
   while (!mqtt.connected()) {
     Serial.println("Reconnecting to MQTT Broker..");
-    String clientId = "ESP32Client-";
-    clientId += String(random(0xffff), HEX);
 
-    if (mqtt.connect(clientId.c_str())) {
+    if (mqtt.connect(String("ESP-"+String(clientId)).c_str())) {
       Serial.println("Connected.");
       // subscribe to topic
-      mqtt.subscribe("doebi/zigvader/out");
+      mqtt.subscribe("doebi/#");
     }
 
   }
@@ -113,10 +123,13 @@ void loop() {
   val = readState();
   //Serial.println(val);
   if (max(val, last) - min(val, last) >= threshold) {
-    Serial.println("change detected");
-    Serial.println(val);
-    mqtt.publish("doebi/zigvader/in", String(val).c_str());
+    if (canSend) {
+      mqtt.publish(String("doebi/zigvader/"+String(clientId)+"/in").c_str(), String(val).c_str());
+    }
     last = val;
+  }
+  if (max(val, wanted) - min(val, wanted) >= threshold) {
+    canSend = true;
   }
   delay(10);
 }
