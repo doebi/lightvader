@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-TF_GATEWAYCODE="yucXzY65deV86pIh"
-TF_GATEWAYIP="192.168.8.181"
+TF_GATEWAYCODE="jvw5BaHbnbt5JCHH"
+TF_GATEWAYIP="192.168.8.107"
 TF_PSKFILE="psk.conf"
 
 set_dim() {
@@ -11,6 +11,7 @@ set_dim() {
   else
     val=$2;
   fi
+  echo "dimming $1 to $2"
   coap-client -m put -u "$TF_USERNAME" -k "$TF_PRESHARED_KEY" -e '{ "3311": [{ "5851": '$val' }] }' "coaps://$TF_GATEWAYIP:5684/15001/$1" 2>/dev/null
 }
 
@@ -28,6 +29,5 @@ fi
 
 DEVICES=$(coap-client -m get -u "$TF_USERNAME" -k "$TF_PRESHARED_KEY" "coaps://$TF_GATEWAYIP:5684/15001" 2>/dev/null | jq -c ".[]")
 for row in $DEVICES; do
-  echo $row
-  set_dim $row 254
+  set_dim $row $1
 done

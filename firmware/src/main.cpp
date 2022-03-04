@@ -2,8 +2,8 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-const char *SSID = "/dev/lol";
-const char *PWD = "4dprinter";
+const char *SSID = "DTNSLT";
+const char *PWD = "datensalat.at";
 
 bool canSend = false;
 
