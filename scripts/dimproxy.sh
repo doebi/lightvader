@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-TF_GATEWAYCODE="yucXzY65deV86pIh"
-TF_GATEWAYIP="192.168.1.5"
+TF_GATEWAYCODE="jvw5BaHbnbt5JCHH"
+TF_GATEWAYIP="192.168.8.107"
 TF_PSKFILE="psk.conf"
 
 set_dim() {
@@ -33,14 +33,14 @@ fi
 
 while true
 do
-    mosquitto_sub -h mqtt.devlol.org -t "doebi/zigvader/+/in" | while read -r payload
+    mosquitto_sub -h mqtt.devlol.org -t "fweinrich/dominicus/+/light" | while read -r payload
     do
       echo "Rx MQTT: ${payload}"
       v=$(echo "$payload * 254" | bc)
       vv=$(/usr/bin/printf "%.0f\n" $v)
-      set_dim 65540 $vv #Fernseher
-      set_dim 65539 $vv #Schreibtisch
-      set_dim 65537 $vv #Couch
+      echo $vv
+      set_dim 65536 $vv #Fernseher
+      set_dim 65541 $vv #Schreibtisch
     done
     sleep 10
 done

@@ -22,7 +22,7 @@ PubSubClient mqtt(wifiClient);
 char *mqttServer = "mqtt.devlol.org";
 int mqttPort = 1883;
 
-String clientId = String(random(0xffff), HEX);
+String clientId = "esp-" + String(random(0xffff), HEX);
 
 float readState() {
   return analogRead(PIN_ADC) / MAX_ADC;
@@ -40,26 +40,42 @@ void connectToWiFi() {
   Serial.print("Connected.");
 }
 
-void setState(float newVal) {
-  wanted = newVal;
-  val = readState();
+String getIdFromTopic(char* topic) {
+  String id = "";
 
-  if (val == newVal) return;
-
-  if (val < newVal) {
-    while (val < newVal) {
-      digitalWrite(PIN_MOTOR_A, HIGH);
-      digitalWrite(PIN_MOTOR_B, LOW);
-      val = readState();
+  int slashCount = 0;
+  for(int i =0; i < strlen(topic); i++ ) {
+    char c = topic[i];
+    if (c == '/'){
+      slashCount++;
+    } else {
+      if (slashCount == 2) id.concat(c);
+      if (slashCount >= 3) break;
     }
   }
 
-  if (val > newVal) {
-    while (val > newVal) {
-      digitalWrite(PIN_MOTOR_A, LOW);
-      digitalWrite(PIN_MOTOR_B, HIGH);
-      val = readState();
-    }
+  return id;
+}
+
+void setState(float newVal) {
+
+  if (newVal > 1) newVal = 1;
+  if (newVal < 0) newVal = 0;
+  wanted = newVal;
+
+  val = readState();
+  if (val == newVal) return;
+
+  while (val < newVal && val != newVal) {
+    digitalWrite(PIN_MOTOR_A, HIGH);
+    digitalWrite(PIN_MOTOR_B, LOW);
+    val = readState();
+  }
+
+  while (val > newVal && val != newVal) {
+    digitalWrite(PIN_MOTOR_A, LOW);
+    digitalWrite(PIN_MOTOR_B, HIGH);
+    val = readState();
   }
 
   digitalWrite(PIN_MOTOR_A, LOW);
@@ -67,12 +83,9 @@ void setState(float newVal) {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  payload[length] = '\0';
-
-  //topic = "doebi/zigvader/d587/in"
-  String id = String(topic).substring(15, 19);
-  if (id != clientId) {
+  if (getIdFromTopic(topic) != clientId) {
     canSend = false;
+    payload[length] = '\n';
     setState(String((char*)payload).toFloat());
   }
 }
@@ -111,7 +124,7 @@ void reconnect() {
     if (mqtt.connect(String("ESP-"+String(clientId)).c_str())) {
       Serial.println("Connected.");
       // subscribe to topic
-      mqtt.subscribe("doebi/#");
+      mqtt.subscribe("doebi/vader/+/in");
     }
 
   }
@@ -121,14 +134,13 @@ void loop() {
     reconnect();
   mqtt.loop();
   val = readState();
-  //Serial.println(val);
   if (max(val, last) - min(val, last) >= threshold) {
     if (canSend) {
-      mqtt.publish(String("doebi/zigvader/"+String(clientId)+"/in").c_str(), String(val).c_str());
+      mqtt.publish(String("doebi/vader/"+String(clientId)+"/in").c_str(), String(val).c_str());
     }
     last = val;
   }
-  if (max(val, wanted) - min(val, wanted) >= threshold) {
+  if (!canSend && max(val, wanted) - min(val, wanted) <= threshold) {
     canSend = true;
   }
   delay(10);
