@@ -134,9 +134,10 @@ void loop() {
     reconnect();
   mqtt.loop();
   val = readState();
+  if (val <= threshold) val = 0;
   if (max(val, last) - min(val, last) >= threshold) {
     if (canSend) {
-      mqtt.publish(String("doebi/vader/"+String(clientId)+"/in").c_str(), String(val).c_str());
+      mqtt.publish(String("doebi/vader/"+String(clientId)+"/in").c_str(), String(val).c_str(), true);
     }
     last = val;
   }
